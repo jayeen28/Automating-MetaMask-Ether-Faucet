@@ -13,7 +13,8 @@ const sleep = async ms => {
 
 const getMoney = async () => {
     try {
-        let getAcc = async () => await db.tables.Accounts.find({ status: 'empty' });
+        console.log('Getting money');
+        let getAcc = () => db.tables.Accounts.find({ status: 'empty' });
         let accounts = await getAcc();
         for (let account of accounts) {
             const response = await new Promise((resolve, reject) => {
@@ -22,16 +23,17 @@ const getMoney = async () => {
                     reject(err.message)
                 })
             });
+            console.log(response)
             if (response.startsWith('{')) {
-                console.log(response)
+                console.log({ account: account.address, status: 'Can not take more.' })
                 account.status = 'filled';
                 await account.save();
                 continue;
             };
-            console.log({ trxHash: response });
+            console.log({ account: account.address, status: `TrxHash: ${response}` });
         }
         accounts = await getAcc();
-        if (accounts.length) getMoney();
+        if (accounts.length) await getMoney();
         else return 'done';
     }
     catch (e) {
@@ -89,7 +91,7 @@ const sendMoney = async () => {
             console.log(response);
         };
         accounts = await getAcc();
-        if (accounts.length) sendMoney();
+        if (accounts.length) await sendMoney();
         else return 'done';
     }
     catch (e) {
@@ -100,12 +102,10 @@ const sendMoney = async () => {
 const main = async () => {
     try {
         await db.connect();
-        // createAccount(300);
-        // await getMoney();
-        // console.log('Get Money done.');
+        await getMoney();
+        console.log('Get Money done.');
         await sendMoney();
-        console.log('Send money done.')
-        // main();
+        console.log('Send money done.');
     }
     catch (e) {
         main();
