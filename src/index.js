@@ -116,8 +116,8 @@ const main = async () => {
     try {
         await db.connect();
         // await createAccount(1);
-        // await getEth();
-        // console.log('Get Money done.');
+        await getEth();
+        console.log('Get Money done.');
         await sendEth();
         console.log('Send money done.');
     }
