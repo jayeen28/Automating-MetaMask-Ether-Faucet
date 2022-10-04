@@ -50,11 +50,11 @@ const createAccount = async count => {
 
 const sendMoney = async () => {
     try {
-        const getAcc = async () => await await db.tables.Accounts.find({ status: 'filled' });
+        const getAcc = () => db.tables.Accounts.find({ status: 'filled' });
         let accounts = await getAcc();
         for (let account of accounts) {
-            // await sleep(5000);
-            console.log('Sending money . . .')
+            await sleep(2000);
+            console.log({ account: account.address, status: 'Sending money . . .' })
             let provider = new HDWalletProvider([account.privateKey], process.env.NODE_URL);
             const web3 = new Web3(provider);
             const balance = await web3.eth.getBalance(account.address);
@@ -64,6 +64,7 @@ const sendMoney = async () => {
             const gas = currentGas * requiredGasPrice;
             const amount = balance - gas;
             if (amount <= 0) {
+                console.log({ account: account.address, status: 'No balance.' })
                 account.status = 'empty';
                 await account.save();
                 continue;
@@ -81,15 +82,15 @@ const sendMoney = async () => {
             const signedTx = await web3.eth.accounts.signTransaction(transaction, account.privateKey);
             const response = await new Promise((resolve, reject) => {
                 web3.eth.sendSignedTransaction(signedTx.rawTransaction, (error, hash) => {
-                    if (error) reject({ "❗ Something went wrong while submitting your transaction": error });
-                    resolve({ "🎉 The hash of your transaction is": hash });
+                    if (error) reject({ account: account.address, status: "❗ Something went wrong while submitting your transaction" });
+                    resolve({ account: account.address, status: `🎉 The hash of your transaction is ${hash}` });
                 })
             });
             console.log(response);
-            accounts = await getAcc();
-            if (accounts.length) sendMoney();
-            else return 'done';
         };
+        accounts = await getAcc();
+        if (accounts.length) sendMoney();
+        else return 'done';
     }
     catch (e) {
         console.log(e);
@@ -107,6 +108,7 @@ const main = async () => {
         // main();
     }
     catch (e) {
+        main();
         console.log(e);
     }
 };
