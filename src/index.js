@@ -54,6 +54,7 @@ const getEth = async () => {
 const createAccount = async count => {
     for (let i = 0; i < count; i++) {
         const { address, privateKey } = await accountGen.create();
+        console.log(address, privateKey)
         const account = await new db.tables.Accounts({ address, privateKey });
         await account.save();
     };
@@ -113,10 +114,10 @@ const sendEth = async () => {
 
 const main = async () => {
     try {
-        // await createAccount(300);
         await db.connect();
-        await getEth();
-        console.log('Get Money done.');
+        // await createAccount(1);
+        // await getEth();
+        // console.log('Get Money done.');
         await sendEth();
         console.log('Send money done.');
     }
