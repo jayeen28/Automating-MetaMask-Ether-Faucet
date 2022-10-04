@@ -1,0 +1,17 @@
+{
+  "name": "wallet",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "start": "node ./src/index.js"
+  },
+  "dependencies": {
+    "@truffle/hdwallet-provider": "^2.0.15",
+    "axios": "^0.27.2",
+    "dotenv": "^16.0.2",
+    "mongoose": "^6.6.1",
+    "web3": "^1.8.0",
+    "web3-eth-accounts": "^1.8.0"
+  }
+}
