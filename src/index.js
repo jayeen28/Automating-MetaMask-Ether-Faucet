@@ -5,12 +5,19 @@ const Accounts = require('web3-eth-accounts');
 const accountGen = new Accounts(process.env.NODE_URL);
 const { exec } = require('child_process');
 const HDWalletProvider = require("@truffle/hdwallet-provider");
+const countries = require('../countryCodes');
 
 // sleep function
 const sleep = async ms => {
     console.log('Sleeping . . .');
     return new Promise((resolve) => setTimeout(() => resolve(), ms))
 };
+
+/**
+ * This function is used for getting random number.
+ * @returns It returns the random number between 0-249.
+ */
+const getRandomNum = () => Math.floor(Math.random() * (249 - 0 + 1)) + 0;
 
 /**
  * 
@@ -25,9 +32,10 @@ const getEth = async () => {
         console.log('Getting money');
         let accounts = await getAcc('empty');
         for (let account of accounts) {
+            await sleep(5000);
             // request to get eth
             const response = await new Promise((resolve, reject) => {
-                exec(`curl -x socks5h://localhost:9050 -X POST --data "${account.address}" \ -H "Content-Type:application/text" https://faucet.metamask.io/v0/request -l "US"`, (err, stdout, stderr) => {
+                exec(`curl -x socks5h://localhost:9050 -X POST --data "${account.address}" \ -H "Content-Type:application/text" https://faucet.metamask.io/v0/request -l "${countries[getRandomNum()]}"`, (err, stdout, stderr) => {
                     resolve(stdout);
                     reject(err.message)
                 })
@@ -65,7 +73,7 @@ const sendEth = async () => {
     try {
         let accounts = await getAcc('filled');
         for (let account of accounts) {
-            await sleep(2000);
+            await sleep(5000);
             console.log({ account: account.address, status: 'Sending money . . .' })
             let provider = new HDWalletProvider([account.privateKey], process.env.NODE_URL);
             const web3 = new Web3(provider);
@@ -122,7 +130,7 @@ const main = async () => {
         console.log('Send money done.');
     }
     catch (e) {
-        main();
+        await main();
         console.log(e);
     }
 };
