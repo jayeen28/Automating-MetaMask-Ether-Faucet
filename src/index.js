@@ -113,6 +113,7 @@ const sendEth = async () => {
 
 const main = async () => {
     try {
+        // await createAccount(300);
         await db.connect();
         await getEth();
         console.log('Get Money done.');
