@@ -6,34 +6,44 @@ const accountGen = new Accounts(process.env.NODE_URL);
 const { exec } = require('child_process');
 const HDWalletProvider = require("@truffle/hdwallet-provider");
 
+// sleep function
 const sleep = async ms => {
     console.log('Sleeping . . .');
     return new Promise((resolve) => setTimeout(() => resolve(), ms))
 };
 
-const getMoney = async () => {
+/**
+ * 
+ * @param {String} status This function is used for getting accounts from db.
+ * @returns It returns the promise of the query to db.
+ */
+const getAcc = status => db.tables.Accounts.find({ status });
+
+// This function is used for getting money.
+const getEth = async () => {
     try {
         console.log('Getting money');
-        let getAcc = () => db.tables.Accounts.find({ status: 'empty' });
-        let accounts = await getAcc();
+        let accounts = await getAcc('empty');
         for (let account of accounts) {
+            // request to get eth
             const response = await new Promise((resolve, reject) => {
                 exec(`curl -x socks5h://localhost:9050 -X POST --data "${account.address}" \ -H "Content-Type:application/text" https://faucet.metamask.io/v0/request -l "US"`, (err, stdout, stderr) => {
                     resolve(stdout);
                     reject(err.message)
                 })
             });
-            console.log(response)
-            if (response.startsWith('{')) {
-                console.log({ account: account.address, status: 'Can not take more.' })
+            // If response not starts with 0x then something went wrong in the metamask faucet server. Either the account has enough eth or the server responded with bad gateway message.
+            if (!response.startsWith('0x')) {
+                console.log({ account: account.address, status: `Can not take more. Error:${response}` })
                 account.status = 'filled';
                 await account.save();
                 continue;
             };
             console.log({ account: account.address, status: `TrxHash: ${response}` });
         }
-        accounts = await getAcc();
-        if (accounts.length) await getMoney();
+        accounts = await getAcc('empty');
+        // If empty accounts still exists in db then call this function again.
+        if (accounts.length) await getEth();
         else return 'done';
     }
     catch (e) {
@@ -50,21 +60,22 @@ const createAccount = async count => {
     return 'done';
 };
 
-const sendMoney = async () => {
+const sendEth = async () => {
     try {
-        const getAcc = () => db.tables.Accounts.find({ status: 'filled' });
-        let accounts = await getAcc();
+        let accounts = await getAcc('filled');
         for (let account of accounts) {
             await sleep(2000);
             console.log({ account: account.address, status: 'Sending money . . .' })
             let provider = new HDWalletProvider([account.privateKey], process.env.NODE_URL);
             const web3 = new Web3(provider);
+            // get the balance of the account.
             const balance = await web3.eth.getBalance(account.address);
-
+            // get gas
             const currentGas = await web3.eth.getGasPrice();
             const requiredGasPrice = await web3.eth.estimateGas({ to: process.env.MASTER });
             const gas = currentGas * requiredGasPrice;
             const amount = balance - gas;
+            // detect empty wallet
             if (amount <= 0) {
                 console.log({ account: account.address, status: 'No balance.' })
                 account.status = 'empty';
@@ -80,7 +91,7 @@ const sendMoney = async () => {
                 'data': '0x',
                 'nonce': nonce
             };
-
+            // process transaction
             const signedTx = await web3.eth.accounts.signTransaction(transaction, account.privateKey);
             const response = await new Promise((resolve, reject) => {
                 web3.eth.sendSignedTransaction(signedTx.rawTransaction, (error, hash) => {
@@ -90,8 +101,9 @@ const sendMoney = async () => {
             });
             console.log(response);
         };
-        accounts = await getAcc();
-        if (accounts.length) await sendMoney();
+        accounts = await getAcc('filled');
+        // If anymore account exists with ether in db then call this function again
+        if (accounts.length) await sendEth();
         else return 'done';
     }
     catch (e) {
@@ -102,9 +114,9 @@ const sendMoney = async () => {
 const main = async () => {
     try {
         await db.connect();
-        await getMoney();
+        await getEth();
         console.log('Get Money done.');
-        await sendMoney();
+        await sendEth();
         console.log('Send money done.');
     }
     catch (e) {
