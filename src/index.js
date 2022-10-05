@@ -37,7 +37,7 @@ const getEth = async () => {
             const response = await new Promise((resolve, reject) => {
                 exec(`curl -x socks5h://localhost:9050 -X POST --data "${account.address}" \ -H "Content-Type:application/text" https://faucet.metamask.io/v0/request -l "${countries[getRandomNum()]}"`, (err, stdout, stderr) => {
                     resolve(stdout);
-                    reject(err.message)
+                    reject(err)
                 })
             });
             // If response not starts with 0x then something went wrong in the metamask faucet server. Either the account has enough eth or the server responded with bad gateway message.
@@ -77,11 +77,7 @@ const sendEth = async () => {
             console.log({ account: account.address, status: 'Sending money . . .' })
             let provider = new HDWalletProvider([account.privateKey], process.env.NODE_URL);
             const web3 = new Web3(provider);
-            // get the balance of the account.
-            const balance = await web3.eth.getBalance(account.address);
-            // get gas
-            const currentGas = await web3.eth.getGasPrice();
-            const requiredGasPrice = await web3.eth.estimateGas({ to: process.env.MASTER });
+            const [balance, currentGas, requiredGasPrice] = await Promise.all([web3.eth.getBalance(account.address), web3.eth.getGasPrice(), web3.eth.estimateGas({ to: process.env.MASTER })]);
             const gas = currentGas * requiredGasPrice;
             const amount = balance - gas;
             // detect empty wallet
